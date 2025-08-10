@@ -1,6 +1,8 @@
 # Kiratech Kubernetes Project
 ## 📋 Scopo e Descrizione della Soluzione
 
+> **IMPORTANTE**: Questo progetto è un Proof of Concept (PoC) sviluppato per scopi dimostrativi. L'applicazione frontend, backend e analytics contiene dati simulati e non è destinata ad uso in produzione.
+
 Questo repository pubblico automatizza l'intero ciclo di vita di un cluster Kubernetes locale (1 master + 2 worker) su Virtual Machines, il setup delle risorse e policy tramite Terraform, il benchmark di sicurezza CIS con kube-bench e il deployment di un'applicazione multi-servizio tramite Helm. Tutto il codice è modulare, riutilizzabile e validato da una pipeline CI su GitHub Actions.
 
 ### Caratteristiche Principali
@@ -15,6 +17,8 @@ Questo repository pubblico automatizza l'intero ciclo di vita di un cluster Kube
 ---
 
 ## 🏗️ Architettura
+
+> **Nota**: L'architettura seguente rappresenta un ambiente dimostrativo (PoC). I servizi frontend, backend e analytics contengono dati simulati per mostrare le funzionalità dell'infrastruttura Kubernetes e non implementano logiche di business reali.
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -411,10 +415,10 @@ export KUBECONFIG=$(pwd)/kubeconfig  # Impostato automaticamente dai comandi
 - **npm**: 6.x
 
 ### Componenti dell'Applicazione
-- **Frontend**: Modern Bootstrap 5.3 Dashboard with Chart.js
-- **Backend**: Node.js Express 14.x
+- **Frontend**: Modern Bootstrap 5.3 Dashboard with Chart.js (dati simulati per scopi dimostrativi)
+- **Backend**: Node.js Express 14.x (API simulate per il PoC)
 - **Cache**: Redis 6.x
-- **Analytics**: Node.js 20.x service for metrics tracking
+- **Analytics**: Node.js 20.x service for metrics tracking (dati simulati)
 
 ### Benchmark di Sicurezza
 - **kube-bench**: 0.5.0 (CIS Kubernetes Benchmark v1.5.0)
