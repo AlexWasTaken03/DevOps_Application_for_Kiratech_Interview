@@ -29,7 +29,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.5.x
+          terraform_version: 1.5.7
           
       - name: Setup Terraform Cache
         uses: actions/cache@v3
