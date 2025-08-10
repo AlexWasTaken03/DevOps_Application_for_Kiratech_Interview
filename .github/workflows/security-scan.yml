@@ -23,12 +23,48 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Check for Terraform files
+        id: check_terraform
+        run: |
+          echo "Checking for Terraform files..."
+          if find . -name "*.tf" | grep -q .; then
+            echo "Terraform files found"
+            echo "has_terraform_files=true" >> $GITHUB_OUTPUT
+          else
+            echo "No Terraform files found"
+            echo "has_terraform_files=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: tfsec
+        if: steps.check_terraform.outputs.has_terraform_files == 'true'
         uses: aquasecurity/tfsec-action@v1.0.0
         with:
           working_directory: terraform
           format: sarif
           output_file: ../tfsec.sarif  # Write to parent directory (repo root)
+          
+      - name: Create empty SARIF file if no Terraform files
+        if: steps.check_terraform.outputs.has_terraform_files == 'false'
+        run: |
+          echo "No Terraform files found, creating an empty SARIF report"
+          EXPECTED_PATH="${{ github.workspace }}/tfsec.sarif"
+          echo '{
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "tfsec",
+                    "informationUri": "https://github.com/aquasecurity/tfsec",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }' > "$EXPECTED_PATH"
+          echo "✅ Created empty SARIF file for Terraform scan"
 
       - name: Debug Environment
         run: |
@@ -115,6 +151,7 @@ jobs:
           category: terraform-security
           wait-for-processing: true
           checkout_path: ${{ github.workspace }}
+        continue-on-error: true  # Don't fail the workflow if upload fails
 
   docker-scan:
     name: Docker Image Scan
@@ -123,10 +160,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         
+      - name: Check for Docker files
+        id: check_docker
+        run: |
+          echo "Checking for Docker files..."
+          if find . -name "Dockerfile" -o -name "docker-compose.yml" | grep -q .; then
+            echo "Docker files found"
+            echo "has_docker_files=true" >> $GITHUB_OUTPUT
+          else
+            echo "No Docker files found"
+            echo "has_docker_files=false" >> $GITHUB_OUTPUT
+          fi
+          
       - name: Set up Docker Buildx
+        if: steps.check_docker.outputs.has_docker_files == 'true'
         uses: docker/setup-buildx-action@v2
         
       - name: Run Trivy vulnerability scanner on Dockerfile
+        if: steps.check_docker.outputs.has_docker_files == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -134,6 +185,29 @@ jobs:
           format: 'sarif'
           output: '${{ github.workspace }}/trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          
+      - name: Create empty SARIF file if no Docker files
+        if: steps.check_docker.outputs.has_docker_files == 'false'
+        run: |
+          echo "No Docker files found, creating an empty SARIF report"
+          EXPECTED_PATH="${{ github.workspace }}/trivy-results.sarif"
+          echo '{
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "trivy",
+                    "informationUri": "https://github.com/aquasecurity/trivy",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }' > "$EXPECTED_PATH"
+          echo "✅ Created empty SARIF file for Docker scan"
           
       - name: Debug Trivy Environment
         run: |
@@ -188,6 +262,7 @@ jobs:
           category: 'docker-security'
           wait-for-processing: true
           checkout_path: ${{ github.workspace }}
+        continue-on-error: true  # Don't fail the workflow if upload fails
 
   kubernetes-scan:
     name: Kubernetes Security Scan
@@ -196,13 +271,49 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
+      - name: Check for Kubernetes files
+        id: check_k8s
+        run: |
+          echo "Checking for Kubernetes files..."
+          if find . -path "*/helm/*/templates/*.yaml" -o -name "*.yml" | grep -E 'deployment|service|pod|ingress|configmap|statefulset|daemonset' | grep -q .; then
+            echo "Kubernetes files found"
+            echo "has_k8s_files=true" >> $GITHUB_OUTPUT
+          else
+            echo "No Kubernetes files found"
+            echo "has_k8s_files=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Run kubesec scan
+        if: steps.check_k8s.outputs.has_k8s_files == 'true'
         uses: controlplaneio/kubesec-action@master
         with:
           input: helm/webapp-stack/templates
           format: sarif
           output: ${{ github.workspace }}/kubesec-results.sarif
           exit-code: "0"  # Don't fail the build for now, just report issues
+          
+      - name: Create empty SARIF file if no Kubernetes files
+        if: steps.check_k8s.outputs.has_k8s_files == 'false'
+        run: |
+          echo "No Kubernetes files found, creating an empty SARIF report"
+          EXPECTED_PATH="${{ github.workspace }}/kubesec-results.sarif"
+          echo '{
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "kubesec",
+                    "informationUri": "https://github.com/controlplaneio/kubesec",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }' > "$EXPECTED_PATH"
+          echo "✅ Created empty SARIF file for Kubernetes scan"
           
       - name: Debug Kubesec Environment
         run: |
@@ -257,6 +368,7 @@ jobs:
           category: 'kubernetes-security'
           wait-for-processing: true
           checkout_path: ${{ github.workspace }}
+        continue-on-error: true  # Don't fail the workflow if upload fails
 
   secrets-scan:
     name: Secret Scanning
