@@ -1,0 +1,48 @@
+name: Pod Distribution Check
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'helm/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'helm/**'
+  workflow_dispatch:
+
+jobs:
+  check-pod-distribution:
+    name: Verify Pod Distribution Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check Pod Distribution Configuration
+        run: |
+          chmod +x .github/workflows/scripts/check-pod-distribution.sh
+          .github/workflows/scripts/check-pod-distribution.sh
+      
+      - name: Check High Availability Setup
+        run: |
+          echo "Checking high availability setup..."
+          
+          # Check pod anti-affinity in templates
+          if grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/frontend-deployment.yaml && \
+             grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/backend-deployment.yaml && \
+             grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/analytics-deployment.yaml; then
+            echo "✅ Pod anti-affinity is configured in deployment templates"
+          else
+            echo "❌ Pod anti-affinity should be configured in all deployment templates"
+            exit 1
+          fi
+          
+          # Check PDB configuration
+          if [ -f "./helm/webapp-stack/templates/pod-disruption-budget.yaml" ]; then
+            echo "✅ Pod Disruption Budget template exists"
+          else
+            echo "❌ Pod Disruption Budget template is missing"
+            exit 1
+          fi
+          
+          echo "All high availability checks passed!"

@@ -1,0 +1,135 @@
+# Frontend configuration
+frontend:
+  enabled: true
+  replicaCount: 2  # Increased to distribute across nodes
+  image:
+    repository: nginx
+    tag: "1.25-alpine"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+  
+  autoscaling:
+    enabled: false
+  
+  # Added for better pod distribution
+  podAntiAffinity:
+    enabled: true
+frontend:
+  enabled: true
+  replicaCount: 2  # Increased to distribute across nodes
+  image:
+    repository: nginx
+    tag: "1.25-alpine"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+  
+  autoscaling:
+    enabled: false
+  
+  # Added for better pod distribution
+  podAntiAffinity:
+    enabled: true
+
+# Backend API configuration
+backend:
+  enabled: true
+  replicaCount: 2  # Increased to distribute across nodes
+  image:
+    repository: node
+    tag: "20-alpine"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  
+  autoscaling:
+    enabled: false
+  
+  # Added for better pod distribution
+  podAntiAffinity:
+    enabled: true
+
+# Redis cache
+redis:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 6379
+    targetPort: 6379
+  
+  # Added for better pod distribution
+  podAntiAffinity:
+    enabled: true
+
+# Analytics service
+analytics:
+  enabled: true
+  replicaCount: 2  # Increased to distribute across nodes
+  image:
+    repository: node
+    tag: "20-alpine"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3002
+    targetPort: 3002
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  
+  # Added for better pod distribution
+  podAntiAffinity:
+    enabled: true
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: "webapp.local"
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /analytics
+          pathType: Prefix
+          service: analytics
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Global values
+global:
+  storageClass: ""
+
+nameOverride: ""
+fullnameOverride: ""

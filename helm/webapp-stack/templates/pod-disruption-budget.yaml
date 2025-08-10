@@ -1,0 +1,43 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "webapp-stack.fullname" . }}-frontend-pdb
+  labels:
+    {{- include "webapp-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "webapp-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "webapp-stack.fullname" . }}-backend-pdb
+  labels:
+    {{- include "webapp-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "webapp-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "webapp-stack.fullname" . }}-analytics-pdb
+  labels:
+    {{- include "webapp-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "webapp-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: analytics
+{{- end }}

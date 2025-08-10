@@ -1,0 +1,201 @@
+{{- if .Values.analytics.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webapp-stack.fullname" . }}-analytics
+  labels:
+    {{- include "webapp-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+spec:
+  replicas: {{ .Values.analytics.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "webapp-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: analytics
+  template:
+    metadata:
+      labels:
+        {{- include "webapp-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: analytics
+    spec:
+      {{- if .Values.analytics.podAntiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                  - analytics
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+      containers:
+      - name: analytics
+        image: "{{ .Values.analytics.image.repository }}:{{ .Values.analytics.image.tag }}"
+        imagePullPolicy: {{ .Values.analytics.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 3002
+          protocol: TCP
+        command:
+        - "node"
+        - "-e"
+        - |
+          const http = require('http');
+          const url = require('url');
+          const PORT = process.env.PORT || 3002;
+          
+          let analyticsData = {
+              sessions: 0,
+              events: 0,
+              dataPoints: 0,
+              serviceMetrics: {
+                  frontend: { views: 0, interactions: 0 },
+                  backend: { requests: 0, errors: 0 },
+                  cache: { hits: 0, misses: 0 }
+              },
+              eventLog: []
+          };
+          
+          // Initialize some data
+          analyticsData.sessions = Math.floor(Math.random() * 50) + 10;
+          analyticsData.events = Math.floor(Math.random() * 100) + 20;
+          analyticsData.dataPoints = Math.floor(Math.random() * 1000) + 100;
+          
+          const server = http.createServer((req, res) => {
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+              res.setHeader('Content-Type', 'application/json');
+              
+              // Handle OPTIONS request for CORS preflight
+              if (req.method === 'OPTIONS') {
+                  res.writeHead(204);
+                  res.end();
+                  return;
+              }
+              
+              const parsedUrl = url.parse(req.url, true);
+              const path = parsedUrl.pathname;
+              
+              // Health check endpoint
+              if (path === '/health' || path === '/ready') {
+                  res.writeHead(200);
+                  res.end(JSON.stringify({
+                      status: 'operational',
+                      service: 'KiraTech Analytics Service',
+                      timestamp: new Date().toISOString()
+                  }));
+                  return;
+              }
+              
+              // Analytics summary endpoint
+              if (path === '/api/summary') {
+                  res.writeHead(200);
+                  res.end(JSON.stringify({
+                      status: 'success',
+                      data: {
+                          sessions: analyticsData.sessions,
+                          events: analyticsData.events,
+                          dataPoints: analyticsData.dataPoints,
+                          serviceMetrics: analyticsData.serviceMetrics
+                      }
+                  }));
+                  return;
+              }
+              
+              // Track event endpoint
+              if (path === '/api/track' && req.method === 'POST') {
+                  let body = '';
+                  
+                  req.on('data', chunk => {
+                      body += chunk.toString();
+                  });
+                  
+                  req.on('end', () => {
+                      try {
+                          const eventData = JSON.parse(body);
+                          const timestamp = new Date().toISOString();
+                          
+                          // Add timestamp
+                          eventData.timestamp = timestamp;
+                          
+                          // Update analytics
+                          analyticsData.events++;
+                          analyticsData.dataPoints += Object.keys(eventData).length;
+                          
+                          // Update service metrics if service is specified
+                          if (eventData.service) {
+                              if (!analyticsData.serviceMetrics[eventData.service]) {
+                                  analyticsData.serviceMetrics[eventData.service] = { requests: 0, events: 0 };
+                              }
+                              analyticsData.serviceMetrics[eventData.service].events++;
+                          }
+                          
+                          // Add to event log
+                          analyticsData.eventLog.push(eventData);
+                          
+                          // Limit event log size
+                          if (analyticsData.eventLog.length > 100) {
+                              analyticsData.eventLog.shift();
+                          }
+                          
+                          res.writeHead(200);
+                          res.end(JSON.stringify({
+                              status: 'success',
+                              message: 'Event tracked successfully',
+                              eventId: `evt_${Date.now()}`,
+                              timestamp
+                          }));
+                      } catch (error) {
+                          res.writeHead(400);
+                          res.end(JSON.stringify({
+                              status: 'error',
+                              message: 'Invalid event data',
+                              error: error.message
+                          }));
+                      }
+                  });
+                  return;
+              }
+              
+              // Get recent events
+              if (path === '/api/events') {
+                  res.writeHead(200);
+                  res.end(JSON.stringify({
+                      status: 'success',
+                      data: {
+                          count: analyticsData.eventLog.length,
+                          events: analyticsData.eventLog.slice(-10) // Return last 10 events
+                      }
+                  }));
+                  return;
+              }
+              
+              // Default 404 response
+              res.writeHead(404);
+              res.end(JSON.stringify({
+                  status: 'error',
+                  message: 'Endpoint not found'
+              }));
+          });
+          
+          server.listen(PORT, '0.0.0.0', () => {
+              console.log(`Analytics service running on port ${PORT}`);
+          });
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3002"
+{{- end }}

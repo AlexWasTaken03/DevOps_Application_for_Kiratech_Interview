@@ -1,0 +1,63 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install required packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - software-properties-common
+      - python3-pip
+      - sshpass
+    state: present
+
+- name: Disable swap immediately
+  command: swapoff -a
+  when: ansible_swaptotal_mb > 0
+
+- name: Remove swap entries from fstab
+  lineinfile:
+    path: /etc/fstab
+    regexp: '^.*swap.*$'
+    state: absent
+  notify: reload systemd
+
+- name: Load kernel modules
+  modprobe:
+    name: "{{ item }}"
+  loop: "{{ kernel_modules }}"
+
+- name: Add kernel modules to load at boot
+  lineinfile:
+    path: /etc/modules-load.d/k8s.conf
+    line: "{{ item }}"
+    create: yes
+  loop: "{{ kernel_modules }}"
+
+- name: Set sysctl parameters for Kubernetes
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/k8s.conf
+    reload: yes
+  loop: "{{ sysctl_params | dict2items }}"
+
+- name: Ensure br_netfilter module is loaded
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: Create ansible user if not exists
+  user:
+    name: ansible
+    groups: sudo
+    shell: /bin/bash
+    create_home: yes
+    append: yes
+  when: ansible_user == "ansible"

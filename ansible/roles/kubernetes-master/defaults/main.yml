@@ -1,0 +1,13 @@
+# Default variables for kubernetes-master role
+pod_network_cidr: "10.244.0.0/16"
+api_server_advertise_address: "192.168.56.10"
+flannel_manifest_url: "https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml"
+
+# Tasks for kubernetes-master role
+tasks:
+  - name: Copy kubeconfig to control node for Terraform
+    ansible.builtin.fetch:
+      src: /etc/kubernetes/admin.conf
+      dest: "{{ playbook_dir }}/../kubeconfig"
+      flat: yes
+    when: inventory_hostname == groups['masters'][0]

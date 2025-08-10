@@ -1,0 +1,7 @@
+---
+# Default variables for kubernetes role
+kubernetes_version: "1.28"
+kubernetes_packages:
+  - kubelet
+  - kubeadm
+  - kubectl

@@ -1,0 +1,96 @@
+{{- if .Values.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webapp-stack.fullname" . }}-backend
+  labels:
+    {{- include "webapp-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "webapp-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "webapp-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    spec:
+      {{- if .Values.backend.podAntiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                  - backend
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+      containers:
+      - name: backend
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        command: ["/bin/sh"]
+        args: 
+        - "-c"
+        - |
+          cat > server.js << 'EOF'
+          const http = require('http');
+          const PORT = process.env.PORT || 3000;
+          let requestCount = 0;
+          
+          const server = http.createServer((req, res) => {
+            requestCount++;
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Content-Type', 'application/json');
+            
+            if (req.url === '/health' || req.url === '/ready') {
+              res.writeHead(200);
+              res.end(JSON.stringify({
+                status: 'healthy',
+                service: 'KiraTech Backend',
+                requests: requestCount,
+                timestamp: new Date().toISOString()
+              }));
+            } else if (req.url.startsWith('/api')) {
+              res.writeHead(200);
+              res.end(JSON.stringify({
+                message: 'KiraTech API is running',
+                version: '1.0.0',
+                endpoint: req.url,
+                requests_served: requestCount
+              }));
+            } else {
+              res.writeHead(404);
+              res.end(JSON.stringify({ error: 'Not found' }));
+            }
+          });
+          
+          server.listen(PORT, '0.0.0.0', () => {
+            console.log('Backend ready on port ' + PORT);
+          });
+          EOF
+          exec node server.js
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+{{- end }}

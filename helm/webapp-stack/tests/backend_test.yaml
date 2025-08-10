@@ -1,0 +1,40 @@
+suite: test backend deployment
+templates:
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - backend-configmap.yaml
+tests:
+  - it: should create backend deployment
+    template: backend-deployment.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-webapp-stack-backend
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should create backend service
+    template: backend-service.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.ports[0].port
+          value: 3000
+
+  - it: should have correct environment variables
+    template: backend-deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NODE_ENV
+            value: production
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PORT
+            value: "3000"

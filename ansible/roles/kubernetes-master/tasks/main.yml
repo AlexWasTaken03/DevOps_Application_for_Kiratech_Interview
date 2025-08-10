@@ -1,0 +1,78 @@
+---
+- name: Check if cluster is already initialized
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_initialized
+
+- name: Pre-pull required images
+  shell: kubeadm config images pull --cri-socket=unix:///var/run/containerd/containerd.sock
+  when: not k8s_initialized.stat.exists
+
+- name: Initialize Kubernetes cluster
+  shell: |
+    kubeadm init \
+      --pod-network-cidr=10.244.0.0/16 \
+      --apiserver-advertise-address=192.168.56.10 \
+      --cri-socket=unix:///var/run/containerd/containerd.sock \
+      --ignore-preflight-errors=NumCPU
+  register: kubeadm_init
+  when: not k8s_initialized.stat.exists
+
+- name: Create .kube directory for users
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: '0755'
+  loop:
+    - { path: "/root/.kube", owner: "root", group: "root" }
+    - { path: "/home/vagrant/.kube", owner: "vagrant", group: "vagrant" }
+    - { path: "/home/ansible/.kube", owner: "ansible", group: "ansible" }
+
+- name: Copy kubeconfig for users
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: '0644'
+    remote_src: yes
+  loop:
+    - { dest: "/root/.kube/config", owner: "root", group: "root" }
+    - { dest: "/home/vagrant/.kube/config", owner: "vagrant", group: "vagrant" }
+    - { dest: "/home/ansible/.kube/config", owner: "ansible", group: "ansible" }
+
+- name: Wait for API server
+  wait_for:
+    port: 6443
+    host: 192.168.56.10
+    delay: 10
+    timeout: 300
+
+- name: Install Flannel CNI
+  shell: kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when: not k8s_initialized.stat.exists
+
+- name: Wait for system pods
+  shell: kubectl get pods -n kube-system --no-headers | grep -v Running | wc -l
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: pods_not_ready
+  until: pods_not_ready.stdout == "0"
+  retries: 20
+  delay: 15
+
+- name: Generate join command
+  shell: kubeadm token create --print-join-command
+  register: join_command_raw
+
+- name: Save join command with CRI socket
+  local_action:
+    module: copy
+    content: "{{ join_command_raw.stdout }} --cri-socket=unix:///var/run/containerd/containerd.sock"
+    dest: "{{ playbook_dir }}/join_command.sh"
+    mode: '0755'
+  become: no

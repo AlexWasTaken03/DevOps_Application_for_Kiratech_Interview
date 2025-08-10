@@ -1,0 +1,3 @@
+---
+# Default variables for kubernetes-worker role
+join_command_file: "./join_command.sh"

@@ -1,0 +1,654 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webapp-stack.fullname" . }}-frontend
+  labels:
+    {{- include "webapp-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "webapp-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "webapp-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      {{- if .Values.frontend.podAntiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                  - frontend
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        command: ["/bin/sh"]
+        args:
+        - "-c"
+        - |
+          cat > /usr/share/nginx/html/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>KiraTech Application Dashboard</title>
+              <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+              <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+              <style>
+                  body {
+                      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                      background-color: #f8f9fa;
+                      padding-top: 20px;
+                  }
+                  .card {
+                      border-radius: 10px;
+                      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                      margin-bottom: 20px;
+                      transition: transform 0.3s;
+                  }
+                  .card:hover {
+                      transform: translateY(-5px);
+                  }
+                  .card-header {
+                      border-radius: 10px 10px 0 0 !important;
+                      font-weight: 600;
+                  }
+                  .status-indicator {
+                      width: 12px;
+                      height: 12px;
+                      border-radius: 50%;
+                      display: inline-block;
+                      margin-right: 5px;
+                  }
+                  .status-operational {
+                      background-color: #28a745;
+                  }
+                  .status-warning {
+                      background-color: #ffc107;
+                  }
+                  .status-error {
+                      background-color: #dc3545;
+                  }
+                  .metric-value {
+                      font-size: 2rem;
+                      font-weight: 700;
+                      color: #495057;
+                  }
+                  .metric-label {
+                      font-size: 0.9rem;
+                      color: #6c757d;
+                      text-transform: uppercase;
+                  }
+                  .chart-container {
+                      position: relative;
+                      height: 180px;
+                      width: 100%;
+                  }
+                  .nav-tabs .nav-link {
+                      border-radius: 10px 10px 0 0;
+                      margin-right: 5px;
+                  }
+                  .nav-tabs .nav-link.active {
+                      font-weight: 600;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <div class="row mb-4">
+                      <div class="col-12">
+                          <div class="d-flex justify-content-between align-items-center">
+                              <h1 class="mb-0">KiraTech Application Dashboard</h1>
+                              <div id="lastUpdated" class="text-muted">Last updated: ...</div>
+                          </div>
+                          <p class="text-muted">Real-time monitoring of services and system health</p>
+                      </div>
+                  </div>
+                  
+                  <div class="row mb-4">
+                      <div class="col-md-4">
+                          <div class="card">
+                              <div class="card-header bg-primary text-white">
+                                  <div class="d-flex justify-content-between align-items-center">
+                                      <span>Frontend Service</span>
+                                      <span id="frontendStatus"><span class="status-indicator status-operational"></span> Operational</span>
+                                  </div>
+                              </div>
+                              <div class="card-body">
+                                  <div class="d-flex justify-content-between mb-3">
+                                      <div class="text-center">
+                                          <div class="metric-value" id="frontendViews">0</div>
+                                          <div class="metric-label">Page Views</div>
+                                      </div>
+                                      <div class="text-center">
+                                          <div class="metric-value" id="frontendUsers">0</div>
+                                          <div class="metric-label">Users</div>
+                                      </div>
+                                  </div>
+                                  <div class="chart-container">
+                                      <canvas id="frontendChart"></canvas>
+                                  </div>
+                              </div>
+                              <div class="card-footer text-muted">
+                                  <small>Service running at <a href="http://192.168.56.11:30080" target="_blank">http://192.168.56.11:30080</a></small>
+                              </div>
+                          </div>
+                      </div>
+                      
+                      <div class="col-md-4">
+                          <div class="card">
+                              <div class="card-header bg-success text-white">
+                                  <div class="d-flex justify-content-between align-items-center">
+                                      <span>Backend API</span>
+                                      <span id="backendStatus"><span class="status-indicator"></span> Loading...</span>
+                                  </div>
+                              </div>
+                              <div class="card-body">
+                                  <div class="d-flex justify-content-between mb-3">
+                                      <div class="text-center">
+                                          <div class="metric-value" id="backendRequests">0</div>
+                                          <div class="metric-label">API Requests</div>
+                                      </div>
+                                      <div class="text-center">
+                                          <div class="metric-value" id="backendErrors">0</div>
+                                          <div class="metric-label">Errors</div>
+                                      </div>
+                                  </div>
+                                  <div class="chart-container">
+                                      <canvas id="backendChart"></canvas>
+                                  </div>
+                              </div>
+                              <div class="card-footer text-muted">
+                                  <small>Service running at <a href="http://192.168.56.11:30081/health" target="_blank">http://192.168.56.11:30081/health</a></small>
+                              </div>
+                          </div>
+                      </div>
+                      
+                      <div class="col-md-4">
+                          <div class="card">
+                              <div class="card-header bg-info text-white">
+                                  <div class="d-flex justify-content-between align-items-center">
+                                      <span>Analytics Service</span>
+                                      <span id="analyticsStatus"><span class="status-indicator"></span> Loading...</span>
+                                  </div>
+                              </div>
+                              <div class="card-body">
+                                  <div class="d-flex justify-content-between mb-3">
+                                      <div class="text-center">
+                                          <div class="metric-value" id="analyticsSessions">0</div>
+                                          <div class="metric-label">Sessions</div>
+                                      </div>
+                                      <div class="text-center">
+                                          <div class="metric-value" id="analyticsEvents">0</div>
+                                          <div class="metric-label">Events</div>
+                                      </div>
+                                  </div>
+                                  <div class="chart-container">
+                                      <canvas id="analyticsChart"></canvas>
+                                  </div>
+                              </div>
+                              <div class="card-footer text-muted">
+                                  <small>Service running at <a href="http://192.168.56.11:30082/health" target="_blank">http://192.168.56.11:30082/health</a></small>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  
+                  <div class="row mb-4">
+                      <div class="col-12">
+                          <ul class="nav nav-tabs" id="myTab" role="tablist">
+                              <li class="nav-item" role="presentation">
+                                  <button class="nav-link active" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button" role="tab" aria-controls="system" aria-selected="true">System Status</button>
+                              </li>
+                              <li class="nav-item" role="presentation">
+                                  <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab" aria-controls="events" aria-selected="false">Recent Events</button>
+                              </li>
+                          </ul>
+                          <div class="tab-content p-3 border border-top-0 rounded-bottom" id="myTabContent">
+                              <div class="tab-pane fade show active" id="system" role="tabpanel" aria-labelledby="system-tab">
+                                  <div class="row">
+                                      <div class="col-md-6">
+                                          <div class="card">
+                                              <div class="card-header">
+                                                  <h5>Redis Cache Status</h5>
+                                              </div>
+                                              <div class="card-body">
+                                                  <div class="d-flex justify-content-between mb-3">
+                                                      <div class="text-center">
+                                                          <div class="metric-value" id="cacheHits">0</div>
+                                                          <div class="metric-label">Cache Hits</div>
+                                                      </div>
+                                                      <div class="text-center">
+                                                          <div class="metric-value" id="cacheMisses">0</div>
+                                                          <div class="metric-label">Cache Misses</div>
+                                                      </div>
+                                                      <div class="text-center">
+                                                          <div class="metric-value" id="cacheRatio">0%</div>
+                                                          <div class="metric-label">Hit Ratio</div>
+                                                      </div>
+                                                  </div>
+                                                  <div class="progress">
+                                                      <div id="cacheProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <div class="col-md-6">
+                                          <div class="card">
+                                              <div class="card-header">
+                                                  <h5>System Health</h5>
+                                              </div>
+                                              <div class="card-body">
+                                                  <ul class="list-group list-group-flush">
+                                                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                          Frontend Service
+                                                          <span id="frontendStatusBadge" class="badge bg-success">Operational</span>
+                                                      </li>
+                                                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                          Backend API
+                                                          <span id="backendStatusBadge" class="badge bg-secondary">Checking...</span>
+                                                      </li>
+                                                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                          Redis Cache
+                                                          <span id="redisStatusBadge" class="badge bg-secondary">Checking...</span>
+                                                      </li>
+                                                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                          Analytics Service
+                                                          <span id="analyticsStatusBadge" class="badge bg-secondary">Checking...</span>
+                                                      </li>
+                                                  </ul>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+                              <div class="tab-pane fade" id="events" role="tabpanel" aria-labelledby="events-tab">
+                                  <div class="table-responsive">
+                                      <table class="table table-hover">
+                                          <thead>
+                                              <tr>
+                                                  <th>Timestamp</th>
+                                                  <th>Service</th>
+                                                  <th>Event Type</th>
+                                                  <th>Details</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody id="eventLogs">
+                                              <tr>
+                                                  <td colspan="4" class="text-center">Loading events...</td>
+                                              </tr>
+                                          </tbody>
+                                      </table>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              
+              <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+              <script>
+                  // Configuration for service endpoints
+                  const config = {
+                      backend: {
+                          healthUrl: 'http://192.168.56.11:30081/health',
+                          statusUrl: 'http://192.168.56.11:30081/api/status'
+                      },
+                      analytics: {
+                          healthUrl: 'http://192.168.56.11:30082/health',
+                          summaryUrl: 'http://192.168.56.11:30082/api/summary',
+                          eventsUrl: 'http://192.168.56.11:30082/api/events',
+                          trackUrl: 'http://192.168.56.11:30082/api/track'
+                      }
+                  };
+                  
+                  // Initialize charts
+                  const frontendChart = new Chart(document.getElementById('frontendChart').getContext('2d'), {
+                      type: 'line',
+                      data: {
+                          labels: Array.from({length: 10}, (_, i) => i),
+                          datasets: [{
+                              label: 'Page Views',
+                              data: Array.from({length: 10}, () => Math.floor(Math.random() * 50) + 10),
+                              borderColor: 'rgba(13, 110, 253, 1)',
+                              backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                              tension: 0.4,
+                              fill: true
+                          }]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                              x: {display: false},
+                              y: {beginAtZero: true}
+                          },
+                          plugins: {
+                              legend: {display: false}
+                          }
+                      }
+                  });
+                  
+                  const backendChart = new Chart(document.getElementById('backendChart').getContext('2d'), {
+                      type: 'bar',
+                      data: {
+                          labels: ['Requests', 'Errors', 'Cached', 'Direct'],
+                          datasets: [{
+                              data: [65, 5, 45, 20],
+                              backgroundColor: [
+                                  'rgba(40, 167, 69, 0.7)',
+                                  'rgba(220, 53, 69, 0.7)',
+                                  'rgba(255, 193, 7, 0.7)',
+                                  'rgba(23, 162, 184, 0.7)'
+                              ],
+                              borderWidth: 1
+                          }]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                              y: {beginAtZero: true}
+                          },
+                          plugins: {
+                              legend: {display: false}
+                          }
+                      }
+                  });
+                  
+                  const analyticsChart = new Chart(document.getElementById('analyticsChart').getContext('2d'), {
+                      type: 'doughnut',
+                      data: {
+                          labels: ['Frontend', 'Backend', 'Cache'],
+                          datasets: [{
+                              data: [30, 50, 20],
+                              backgroundColor: [
+                                  'rgba(13, 110, 253, 0.7)',
+                                  'rgba(40, 167, 69, 0.7)',
+                                  'rgba(255, 193, 7, 0.7)'
+                              ],
+                              borderWidth: 1
+                          }]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                              legend: {
+                                  position: 'bottom',
+                                  labels: {
+                                      boxWidth: 12
+                                  }
+                              }
+                          }
+                      }
+                  });
+                  
+                  // Function to update status indicators
+                  function updateStatus(element, statusBadge, status) {
+                      let color, text, badgeClass;
+                      
+                      switch(status) {
+                          case 'operational':
+                              color = 'status-operational';
+                              text = 'Operational';
+                              badgeClass = 'bg-success';
+                              break;
+                          case 'degraded':
+                              color = 'status-warning';
+                              text = 'Degraded';
+                              badgeClass = 'bg-warning';
+                              break;
+                          case 'error':
+                              color = 'status-error';
+                              text = 'Error';
+                              badgeClass = 'bg-danger';
+                              break;
+                          default:
+                              color = 'status-warning';
+                              text = 'Unknown';
+                              badgeClass = 'bg-secondary';
+                      }
+                      
+                      element.innerHTML = `<span class="status-indicator ${color}"></span> ${text}`;
+                      if (statusBadge) {
+                          statusBadge.className = `badge ${badgeClass}`;
+                          statusBadge.textContent = text;
+                      }
+                  }
+                  
+                  // Function to fetch data from services
+                  async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+                      const controller = new AbortController();
+                      const id = setTimeout(() => controller.abort(), timeout);
+                      
+                      try {
+                          const response = await fetch(url, {
+                              ...options,
+                              signal: controller.signal
+                          });
+                          clearTimeout(id);
+                          return response;
+                      } catch (error) {
+                          clearTimeout(id);
+                          throw error;
+                      }
+                  }
+                  
+                  // Function to check service health
+                  async function checkServiceHealth(healthUrl, statusElement, statusBadge) {
+                      try {
+                          const response = await fetchWithTimeout(healthUrl);
+                          if (response.ok) {
+                              updateStatus(statusElement, statusBadge, 'operational');
+                              return true;
+                          } else {
+                              updateStatus(statusElement, statusBadge, 'degraded');
+                              return false;
+                          }
+                      } catch (error) {
+                          updateStatus(statusElement, statusBadge, 'error');
+                          return false;
+                      }
+                  }
+                  
+                  // Function to update analytics data
+                  async function updateAnalyticsData() {
+                      try {
+                          const response = await fetchWithTimeout(config.analytics.summaryUrl);
+                          if (response.ok) {
+                              const data = await response.json();
+                              
+                              // Update metrics
+                              document.getElementById('analyticsSessions').textContent = data.data.sessions;
+                              document.getElementById('analyticsEvents').textContent = data.data.events;
+                              
+                              // Update cache stats
+                              const cacheHits = data.data.serviceMetrics.cache?.hits || 0;
+                              const cacheMisses = data.data.serviceMetrics.cache?.misses || 0;
+                              const totalCache = cacheHits + cacheMisses;
+                              const hitRatio = totalCache > 0 ? Math.round((cacheHits / totalCache) * 100) : 0;
+                              
+                              document.getElementById('cacheHits').textContent = cacheHits;
+                              document.getElementById('cacheMisses').textContent = cacheMisses;
+                              document.getElementById('cacheRatio').textContent = `${hitRatio}%`;
+                              
+                              const progressBar = document.getElementById('cacheProgressBar');
+                              progressBar.style.width = `${hitRatio}%`;
+                              progressBar.setAttribute('aria-valuenow', hitRatio);
+                              
+                              // Update chart data
+                              analyticsChart.data.datasets[0].data = [
+                                  data.data.serviceMetrics.frontend?.views || 30,
+                                  data.data.serviceMetrics.backend?.requests || 50,
+                                  data.data.serviceMetrics.cache?.hits || 20
+                              ];
+                              analyticsChart.update();
+                              
+                              return true;
+                          }
+                          return false;
+                      } catch (error) {
+                          console.error('Error fetching analytics data:', error);
+                          return false;
+                      }
+                  }
+                  
+                  // Function to update events table
+                  async function updateEventsTable() {
+                      try {
+                          const response = await fetchWithTimeout(config.analytics.eventsUrl);
+                          if (response.ok) {
+                              const data = await response.json();
+                              const eventLogs = document.getElementById('eventLogs');
+                              
+                              if (data.data.events.length === 0) {
+                                  eventLogs.innerHTML = '<tr><td colspan="4" class="text-center">No events recorded yet</td></tr>';
+                                  return;
+                              }
+                              
+                              let html = '';
+                              data.data.events.forEach(event => {
+                                  html += `
+                                  <tr>
+                                      <td>${new Date(event.timestamp).toLocaleString()}</td>
+                                      <td>${event.service || 'Unknown'}</td>
+                                      <td>${event.type || 'System'}</td>
+                                      <td>${event.message || JSON.stringify(event).substring(0, 50) + '...'}</td>
+                                  </tr>
+                                  `;
+                              });
+                              
+                              eventLogs.innerHTML = html;
+                          }
+                      } catch (error) {
+                          console.error('Error fetching events:', error);
+                      }
+                  }
+                  
+                  // Function to update backend data
+                  async function updateBackendData() {
+                      try {
+                          const response = await fetchWithTimeout(config.backend.statusUrl);
+                          if (response.ok) {
+                              const data = await response.json();
+                              
+                              // Update metrics
+                              document.getElementById('backendRequests').textContent = data.requests || 0;
+                              document.getElementById('backendErrors').textContent = data.errors || 0;
+                              
+                              // Update chart
+                              backendChart.data.datasets[0].data = [
+                                  data.requests || 65,
+                                  data.errors || 5,
+                                  data.cached || 45,
+                                  data.direct || 20
+                              ];
+                              backendChart.update();
+                              
+                              return true;
+                          }
+                          return false;
+                      } catch (error) {
+                          console.error('Error fetching backend data:', error);
+                          return false;
+                      }
+                  }
+                  
+                  // Function to update the UI
+                  async function updateDashboard() {
+                      // Update the last updated timestamp
+                      document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleString()}`;
+                      
+                      // Update random frontend metrics
+                      document.getElementById('frontendViews').textContent = Math.floor(Math.random() * 1000) + 500;
+                      document.getElementById('frontendUsers').textContent = Math.floor(Math.random() * 100) + 50;
+                      
+                      // Update frontend chart with new data
+                      frontendChart.data.datasets[0].data.shift();
+                      frontendChart.data.datasets[0].data.push(Math.floor(Math.random() * 50) + 10);
+                      frontendChart.update();
+                      
+                      // Check service health
+                      const backendHealthy = await checkServiceHealth(
+                          config.backend.healthUrl,
+                          document.getElementById('backendStatus'),
+                          document.getElementById('backendStatusBadge')
+                      );
+                      
+                      const analyticsHealthy = await checkServiceHealth(
+                          config.analytics.healthUrl,
+                          document.getElementById('analyticsStatus'),
+                          document.getElementById('analyticsStatusBadge')
+                      );
+                      
+                      // Update Redis status randomly (since we don't have direct access)
+                      const redisStatus = Math.random() > 0.1 ? 'operational' : 'degraded';
+                      updateStatus(null, document.getElementById('redisStatusBadge'), redisStatus);
+                      
+                      // Update data if services are healthy
+                      if (backendHealthy) {
+                          await updateBackendData();
+                      }
+                      
+                      if (analyticsHealthy) {
+                          await updateAnalyticsData();
+                          await updateEventsTable();
+                      }
+                      
+                      // Simulate event tracking
+                      try {
+                          await fetch(config.analytics.trackUrl, {
+                              method: 'POST',
+                              headers: {
+                                  'Content-Type': 'application/json'
+                              },
+                              body: JSON.stringify({
+                                  service: 'frontend',
+                                  type: 'dashboard_refresh',
+                                  message: 'Dashboard UI refreshed',
+                                  timestamp: new Date().toISOString()
+                              })
+                          });
+                      } catch (error) {
+                          console.error('Error tracking event:', error);
+                      }
+                  }
+                  
+                  // Initial update
+                  updateDashboard();
+                  
+                  // Set interval to update dashboard every 10 seconds
+                  setInterval(updateDashboard, 10000);
+              </script>
+          </body>
+          </html>
+          EOF
+          exec nginx -g 'daemon off;'
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+{{- end }}

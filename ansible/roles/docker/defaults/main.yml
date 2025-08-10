@@ -1,0 +1,8 @@
+---
+# Default variables for docker role
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+containerd_systemd_cgroup: true

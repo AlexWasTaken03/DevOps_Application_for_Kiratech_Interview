@@ -1,0 +1,43 @@
+suite: test frontend deployment
+templates:
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - frontend-configmap.yaml
+tests:
+  - it: should create frontend deployment
+    template: frontend-deployment.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-webapp-stack-frontend
+      - equal:
+          path: spec.replicas
+          value: 2
+
+  - it: should create frontend service
+    template: frontend-service.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.ports[0].port
+          value: 80
+
+  - it: should create frontend configmap
+    template: frontend-configmap.yaml
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - isNotEmpty:
+          path: data["nginx.conf"]
+      - isNotEmpty:
+          path: data["index.html"]
+
+  - it: should handle disabled frontend
+    set:
+      frontend.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: KiraTech DevOps
+  description: Kubernetes master node configuration
+  company: KiraTech
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - focal
+
+dependencies:
+  - kubernetes
