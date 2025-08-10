@@ -28,9 +28,9 @@ jobs:
           echo "Checking high availability setup..."
           
           # Check pod anti-affinity in templates
-          if grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/frontend-deployment.yaml && \
-             grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/backend-deployment.yaml && \
-             grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/analytics-deployment.yaml; then
+          if grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/frontend-deployment.yaml \
+             && grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/backend-deployment.yaml \
+             && grep -q "podAntiAffinity:" ./helm/webapp-stack/templates/analytics-deployment.yaml; then
             echo "✅ Pod anti-affinity is configured in deployment templates"
           else
             echo "❌ Pod anti-affinity should be configured in all deployment templates"
