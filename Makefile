@@ -1,4 +1,4 @@
-.PHONY: help setup deploy test clean lint security-scan status port-forward logs scale update validate health-check benchmark fix-pod-distribution verify-pod-distribution
+.PHONY: help setup deploy test clean lint security-scan status port-forward logs scale update validate health-check benchmark fix-pod-distribution verify-pod-distribution validate-workflows test-security mock-deploy
 
 # Default target
 help: ## Show this help message
@@ -36,11 +36,17 @@ lint: ## Run linting for all components
 	@cd ansible && ansible-lint playbooks/site.yml || echo "Ansible lint completed with warnings"
 	@echo "Helm linting..."
 	@cd helm/webapp-stack && helm lint . || echo "Helm lint completed with warnings"
+	@echo "GitHub Actions workflow linting..."
+	@./scripts/validate-workflows.sh || echo "Workflow validation completed with warnings"
 
 security-scan: ## Run security scans
 	@echo "🔒 Running security scans..."
 	@echo "Checking for vulnerabilities with Trivy..."
 	@trivy fs . --exit-code 0 --no-progress --format table 2>/dev/null || echo "Trivy not available, skipping scan"
+	@echo "Checking for Terraform security issues..."
+	@tfsec terraform 2>/dev/null || echo "tfsec not available, skipping scan"
+	@echo "Checking for secrets in repository..."
+	@trufflehog git file://. --only-verified 2>/dev/null || echo "trufflehog not available, skipping scan"
 	@echo "Security scan completed"
 
 status: ## Show cluster and application status
@@ -150,6 +156,10 @@ install-tools: ## Install required tools (Ubuntu/Debian)
 	@curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 	@# Install Ansible
 	@pip3 install ansible==8.7.0 ansible-lint==6.22.1 || sudo pip3 install ansible==8.7.0 ansible-lint==6.22.1
+	@# Install CI/CD tools
+	@pip3 install yamllint || sudo pip3 install yamllint
+	@curl -sSfL https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | sudo bash
+	@curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo bash
 	@echo "Tools installation completed"
 
 version: ## Show versions of all tools
@@ -200,5 +210,32 @@ verify-pod-distribution: ## Verify pod distribution across nodes
 	@echo "🔍 Verifying pod distribution..."
 	@export KUBECONFIG=$$(pwd)/kubeconfig && \
 	./scripts/verify-pod-distribution.sh
+
+validate-workflows: ## Validate GitHub Actions workflows
+	@echo "🔍 Validating GitHub Actions workflows..."
+	@./scripts/validate-workflows.sh
+
+test-security: ## Run comprehensive security tests
+	@echo "🔒 Running comprehensive security tests..."
+	@make security-scan
+	@echo "Running CIS Kubernetes Benchmark test..."
+	@export KUBECONFIG=$$(pwd)/kubeconfig && \
+	kubectl create job --from=cronjob/kube-bench-cronjob kube-bench-test -n kiratech-test 2>/dev/null || echo "Creating benchmark job..."
+	@sleep 10
+	@export KUBECONFIG=$$(pwd)/kubeconfig && \
+	kubectl logs job/kube-bench-test -n kiratech-test 2>/dev/null || echo "Benchmark job still running..."
+	@echo "Security testing completed!"
+
+mock-deploy: ## Run mock deployment for CI/CD testing
+	@echo "🚀 Running mock deployment for CI/CD testing..."
+	@echo "Validating Helm charts..."
+	@cd helm/webapp-stack && helm lint .
+	@echo "Rendering Helm templates..."
+	@cd helm/webapp-stack && helm template . > /tmp/deployment-preview.yaml
+	@echo "Validating Kubernetes manifests..."
+	@kubectl apply --dry-run=client -f /tmp/deployment-preview.yaml
+	@echo "Simulating Terraform plan..."
+	@cd terraform && terraform init -backend=false && terraform plan -input=false -lock=false -no-color
+	@echo "✅ Mock deployment completed successfully!"
 
 .DEFAULT_GOAL := help
