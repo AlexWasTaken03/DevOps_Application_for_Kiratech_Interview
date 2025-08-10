@@ -1,80 +1,81 @@
-# Enhanced CI/CD Pipeline
+# Pipeline CI/CD Avanzata
 
-This document describes the enhanced CI/CD pipeline architecture implemented for the DevOps Application.
+Questo documento descrive l'architettura avanzata della pipeline CI/CD implementata per l'Applicazione DevOps.
 
-## CI Pipeline Components
+## Componenti della Pipeline CI
 
-The Continuous Integration pipeline consists of several workflows that run automatically to ensure code quality and security:
+La pipeline di Integrazione Continua consiste in diversi workflow che vengono eseguiti automaticamente per garantire la qualità del codice e la sicurezza:
 
-### 1. Main CI Pipeline (`ci.yml`)
+### 1. Pipeline CI Principale (`ci.yml`)
 
-- **Terraform Linting**: Format checking, initialization, and validation
-- **Ansible Linting**: Playbook validation using ansible-lint
-- **Helm Chart Linting**: Validation of Helm charts
-- **Shell Script Linting**: Validation of shell scripts using ShellCheck
+- **Linting Terraform**: Controllo del formato, inizializzazione e validazione
+- **Linting Ansible**: Validazione dei playbook utilizzando ansible-lint
+- **Linting Chart Helm**: Validazione dei chart Helm
+- **Linting Script Shell**: Validazione degli script shell utilizzando ShellCheck
 
-### 2. Security Scanning (`security-scan.yml`)
+### 2. Scansione di Sicurezza (`security-scan.yml`)
 
-- **Terraform Security** (tfsec): Scans Terraform code for security issues
-- **Docker Image Scanning** (Trivy): Scans Dockerfiles and container images
-- **Kubernetes Manifest Scanning** (kubesec): Analyzes Kubernetes manifests for security best practices
-- **Secret Detection** (TruffleHog): Scans for leaked credentials and secrets
+- **Sicurezza Terraform** (tfsec): Scansiona il codice Terraform per problemi di sicurezza
+- **Scansione Immagini Docker** (Trivy): Scansiona Dockerfile e immagini container
+- **Scansione Manifest Kubernetes** (kubesec): Analizza i manifest Kubernetes per verificare le best practice di sicurezza
+- **Rilevamento Segreti** (TruffleHog): Cerca credenziali e segreti trapelati
 
-### 3. Infrastructure Testing (`infrastructure-tests.yml`)
+### 3. Test dell'Infrastruttura (`infrastructure-tests.yml`)
 
-- **Terraform Plan**: Generates and validates Terraform execution plans
-- **Helm Template Validation**: Renders and validates Helm templates
-- **Ansible Check Mode**: Runs Ansible playbooks in check mode to validate syntax
+- **Piano Terraform**: Genera e convalida i piani di esecuzione Terraform
+- **Validazione Template Helm**: Renderizza e convalida i template Helm
+- **Modalità Check Ansible**: Esegue i playbook Ansible in modalità check per validare la sintassi
 
-## CD Pipeline
+## Pipeline CD
 
-The Continuous Delivery pipeline (`cd.yml`) provides a robust deployment process:
+La pipeline di Distribuzione Continua (`cd.yml`) offre un processo di deployment robusto:
 
-### Key Features
+### Caratteristiche Principali
 
-1. **Environment-Specific Deployments**: 
-   - Support for staging and production environments
-   - Separate approval gates for each environment
+1. **Deployment Specifici per Ambiente**: 
+   - Supporto per ambienti di staging e produzione
+   - Gate di approvazione separati per ciascun ambiente
 
-2. **Comprehensive Testing**:
-   - Pre-deployment validation of all resources
-   - Security scanning before deployment
-   - Pod distribution verification
+2. **Test Completi**:
+   - Validazione pre-deployment di tutte le risorse
+   - Scansione di sicurezza prima del deployment
+   - Verifica della distribuzione dei pod
 
-3. **Deployment Visibility**:
-   - Detailed deployment preview
-   - Change summary report
-   - Deployment artifacts for auditing
+3. **Visibilità del Deployment**:
+   - Anteprima dettagliata del deployment
+   - Report riepilogativo delle modifiche
+   - Artefatti di deployment per audit
 
-4. **Approval Workflow**:
-   - Required manual approval before deployment
-   - Environment-specific approval gates
+4. **Workflow di Approvazione**:
+   - Approvazione manuale richiesta prima del deployment
+   - Gate di approvazione specifici per ambiente
 
-5. **Notification System**:
-   - Deployment status notifications
-   - PR comment notifications for deployment readiness
+5. **Sistema di Notifiche**:
+   - Notifiche sullo stato del deployment
+   - Notifiche nei commenti delle PR sulla disponibilità del deployment
 
-## Pipeline Architecture
+## Architettura della Pipeline
 
 ```
 ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│ Code Commit   │────▶│ CI Workflows  │────▶│ Linting       │
+│ Commit Codice │────▶│ Workflow CI   │────▶│ Linting       │
 └───────────────┘     └───────────────┘     └───────────────┘
                             │                       │
                             ▼                       ▼
 ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│ Release Tag   │────▶│ CD Workflow   │────▶│ Validation    │
+│ Tag Release   │────▶│ Workflow CD   │────▶│ Validazione   │
 └───────────────┘     └───────────────┘     └───────────────┘
                             │                       │
                             ▼                       ▼
 ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│ Manual Trigger│────▶│ Pre-deployment│────▶│ Security Scan │
-└───────────────┘     │ Tests         │     └───────────────┘
-                      └───────────────┘             │
-                            │                       ▼
-                            ▼                ┌───────────────┐
-                     ┌───────────────┐      │ Deployment    │
-                     │ Approval Gate │◀─────│ Simulation    │
+│ Trigger       │────▶│ Test Pre-     │────▶│ Scansione di  │
+│ Manuale       │     │ deployment    │     │ Sicurezza     │
+└───────────────┘     └───────────────┘     └───────────────┘
+                            │                       │
+                            ▼                       ▼
+                     ┌───────────────┐      ┌───────────────┐
+                     │ Gate di       │◀─────│ Simulazione   │
+                     │ Approvazione  │      │ Deployment    │
                      └───────────────┘      └───────────────┘
                             │
                             ▼
@@ -84,44 +85,44 @@ The Continuous Delivery pipeline (`cd.yml`) provides a robust deployment process
                             │
                             ▼
                      ┌───────────────┐
-                     │ Verification  │
+                     │ Verifica      │
                      └───────────────┘
 ```
 
-## Usage
+## Utilizzo
 
-### Running the CI Pipeline
+### Esecuzione della Pipeline CI
 
-The CI pipeline runs automatically on:
-- Every push to the main branch
-- Every pull request to the main branch
+La pipeline CI viene eseguita automaticamente su:
+- Ogni push al branch main
+- Ogni pull request al branch main
 
-### Triggering the CD Pipeline
+### Attivazione della Pipeline CD
 
-The CD pipeline can be triggered:
-1. Automatically when code is pushed to the `release` branch
-2. Manually via GitHub Actions interface with these options:
-   - Environment selection (staging/production)
-   - Test skipping option for emergency fixes
+La pipeline CD può essere attivata:
+1. Automaticamente quando il codice viene pushato al branch `release`
+2. Manualmente tramite l'interfaccia GitHub Actions con queste opzioni:
+   - Selezione dell'ambiente (staging/produzione)
+   - Opzione di salto dei test per correzioni di emergenza
 
-### Security Scanning
+### Scansione di Sicurezza
 
-The security scanning workflow runs:
-- On every push to main
-- On every pull request
-- Weekly on a schedule (Sunday at midnight)
-- On-demand via manual trigger
+Il workflow di scansione di sicurezza viene eseguito:
+- Ad ogni push su main
+- Ad ogni pull request
+- Settimanalmente secondo una pianificazione (domenica a mezzanotte)
+- Su richiesta tramite trigger manuale
 
-## Extending the Pipeline
+## Estensione della Pipeline
 
-To add new components to the pipeline:
+Per aggiungere nuovi componenti alla pipeline:
 
-1. For new infrastructure components:
-   - Add relevant linting steps to `ci.yml`
-   - Add security scanning in `security-scan.yml`
-   - Include validation in `infrastructure-tests.yml`
+1. Per nuovi componenti dell'infrastruttura:
+   - Aggiungere i relativi step di linting a `ci.yml`
+   - Aggiungere la scansione di sicurezza in `security-scan.yml`
+   - Includere la validazione in `infrastructure-tests.yml`
 
-2. For new application components:
-   - Update the Helm chart to include the new component
-   - Add deployment steps in `cd.yml`
-   - Include the component in deployment reports
+2. Per nuovi componenti dell'applicazione:
+   - Aggiornare il chart Helm per includere il nuovo componente
+   - Aggiungere i passaggi di deployment in `cd.yml`
+   - Includere il componente nei report di deployment

@@ -1,82 +1,82 @@
-# CI/CD Pipeline Documentation
+# Documentazione Pipeline CI/CD
 
-This document describes the CI/CD pipeline implemented in this project.
+Questo documento descrive la pipeline CI/CD implementata in questo progetto.
 
-## CI Pipeline
+## Pipeline CI
 
-The Continuous Integration pipeline runs automatically on every push to the `main` branch and on all pull requests. Its primary purpose is to validate code quality and ensure that all components meet the project's standards.
+La pipeline di Integrazione Continua viene eseguita automaticamente ad ogni push sul branch `main` e su tutte le pull request. Il suo scopo principale è validare la qualità del codice e assicurare che tutti i componenti soddisfino gli standard del progetto.
 
-### CI Pipeline Steps
+### Passaggi della Pipeline CI
 
-1. **Terraform Validation**
-   - Format check using `terraform fmt`
-   - Configuration validation using `terraform validate`
-   - No actual infrastructure changes are made
+1. **Validazione Terraform**
+   - Controllo del formato utilizzando `terraform fmt`
+   - Validazione della configurazione utilizzando `terraform validate`
+   - Non vengono apportate modifiche effettive all'infrastruttura
 
-2. **Ansible Validation**
-   - Linting playbooks with `ansible-lint`
-   - Checking for best practices and potential issues
+2. **Validazione Ansible**
+   - Linting dei playbook con `ansible-lint`
+   - Verifica delle best practice e potenziali problemi
 
-3. **Helm Chart Validation**
-   - Linting charts with `helm lint`
-   - Ensuring charts follow best practices
+3. **Validazione Chart Helm**
+   - Linting dei chart con `helm lint`
+   - Garanzia che i chart seguano le best practice
 
-4. **Shell Script Validation**
-   - Analyzing shell scripts with `shellcheck`
-   - Identifying common errors and bugs
+4. **Validazione Script Shell**
+   - Analisi degli script shell con `shellcheck`
+   - Identificazione di errori e bug comuni
 
-### Running the CI Pipeline Locally
+### Esecuzione Locale della Pipeline CI
 
-You can run the CI checks locally before pushing your changes:
+Puoi eseguire i controlli CI localmente prima di pushare le tue modifiche:
 
 ```bash
-# For Terraform
+# Per Terraform
 cd terraform
 terraform fmt -check -recursive
 terraform init -backend=false
 terraform validate
 
-# For Ansible
+# Per Ansible
 cd ansible
 ansible-lint playbooks/site.yml
 
-# For Helm
+# Per Helm
 cd helm/webapp-stack
 helm lint .
 
-# For Shell Scripts
+# Per Script Shell
 shellcheck scripts/*.sh
 ```
 
-## CD Pipeline
+## Pipeline CD
 
-The Continuous Deployment pipeline is triggered either:
-- Automatically on pushes to the `release` branch
-- Manually through the GitHub Actions interface
+La pipeline di Distribuzione Continua viene attivata:
+- Automaticamente sui push al branch `release`
+- Manualmente tramite l'interfaccia di GitHub Actions
 
-### CD Pipeline Steps
+### Passaggi della Pipeline CD
 
-1. **Build and Validate**
-   - Generating validation reports
-   - Preparing deployment artifacts
+1. **Build e Validazione**
+   - Generazione di report di validazione
+   - Preparazione degli artefatti di deployment
 
-2. **Simulate Deployment**
-   - Testing Helm chart rendering with `helm template`
-   - Validating infrastructure changes (simulated)
+2. **Simulazione di Deployment**
+   - Test di rendering del chart Helm con `helm template`
+   - Validazione delle modifiche all'infrastruttura (simulate)
 
-3. **Deployment** (Manual approval required)
-   - Deploying to the selected environment (staging/production)
-   - Post-deployment validation
+3. **Deployment** (Richiesta approvazione manuale)
+   - Deployment nell'ambiente selezionato (staging/produzione)
+   - Validazione post-deployment
 
-## Pipeline Configuration
+## Configurazione della Pipeline
 
-The pipeline configuration is stored in `.github/workflows/`:
-- `ci.yml` - CI pipeline configuration
-- `cd.yml` - CD pipeline configuration
+La configurazione della pipeline è memorizzata in `.github/workflows/`:
+- `ci.yml` - Configurazione della pipeline CI
+- `cd.yml` - Configurazione della pipeline CD
 
-## Best Practices
+## Best Practice
 
-1. Always run CI checks locally before pushing changes
-2. Review pipeline logs for any warnings, even if the pipeline succeeds
-3. Keep the CI pipeline fast by optimizing steps and using caching
-4. Use descriptive commit messages to make the pipeline history more useful
+1. Eseguire sempre i controlli CI localmente prima di pushare le modifiche
+2. Rivedere i log della pipeline per eventuali avvisi, anche se la pipeline ha successo
+3. Mantenere la pipeline CI veloce ottimizzando i passaggi e utilizzando il caching
+4. Utilizzare messaggi di commit descrittivi per rendere la cronologia della pipeline più utile
