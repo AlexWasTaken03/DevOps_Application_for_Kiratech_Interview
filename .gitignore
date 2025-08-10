@@ -1,0 +1,107 @@
+# General
+.DS_Store
+*.log
+*.bak
+*.swp
+*~
+tmp/
+.vagrant/
+.vscode/
+.idea/
+
+# Kubeconfig files
+kubeconfig
+*kubeconfig*
+.kube/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
+
+# Ansible
+*.retry
+.ansible/
+ansible/*.log
+roles/**/*.log
+inventory/group_vars/*.vault
+
+# Helm
+.helm/
+helm/**/*.tgz
+helm/**/charts/
+*.tgz
+Chart.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnp/
+.pnp.js
+coverage/
+.nyc_output
+*.tsbuildinfo
+.npm
+.eslintcache
+
+# Test artifacts
+reports/
+test-results/
+*junit.xml
+.coverage
+coverage.xml
+.hypothesis/
+.pytest_cache/
+
+# Logs and temp files
+logs/
+*.log.*
+temp/
+.temp/
+.tmp/
+
+# Security related
+*.pem
+*.key
+*.crt
+*.p12
+.env
+.env.*
+.secret
+
+# Generated deployment files
+/tmp/deployment-preview.yaml
+/terraform/validation-report.md
