@@ -40,11 +40,30 @@ Per applicare e verificare la configurazione di alta disponibilità, ho utilizza
 - **Terraform**: Moduli per namespace, job, policy, e risorse cluster. File principali: `terraform/main.tf`, `terraform/outputs.tf`.
 - **Helm**: Chart parametrico per frontend, backend, cache. Directory: `helm/webapp-stack/`.
 
-### Pipeline CI
+### Pipeline CI/CD
 
-- **GitHub Actions**: Workflow automatico su ogni push. Step: linting Terraform (`terraform fmt`, `terraform validate`), linting Ansible (`ansible-lint`), linting Helm (`helm lint`), linting Shell Scripts (`shellcheck`).
-- **CI/CD Pipeline**: Pipeline di integrazione continua (CI) e consegna continua (CD) separate per validare modifiche al codice e automatizzare il deployment.
-- **Report di Validazione**: Generazione automatica di report di validazione durante il processo CI/CD.
+- **CI Pipeline**: Workflow automatico su ogni push che esegue:
+  - Linting Terraform (`terraform fmt`, `terraform validate`)
+  - Linting Ansible (`ansible-lint`)
+  - Linting Helm (`helm lint`)
+  - Linting Shell Scripts (`shellcheck`)
+  - Scansioni di sicurezza dell'infrastruttura
+  - Test di validazione delle configurazioni
+
+- **CD Pipeline**: Pipeline di deployment completa con:
+  - Trigger automatico sul branch release
+  - Approvazione manuale prima del deployment
+  - Simulazione di deployment per validazione
+  - Report dettagliati pre e post deployment
+  - Supporto per ambienti staging e production
+
+- **Pipeline di Sicurezza**: Scansione automatica di:
+  - Codice Terraform (tfsec)
+  - Immagini Docker (Trivy)
+  - Manifesti Kubernetes (kubesec)
+  - Secrets nel repository (TruffleHog)
+
+Per una documentazione dettagliata della pipeline CI/CD, vedere [Enhanced CI/CD Pipeline](docs/enhanced-ci-cd.md).
 
 ### Pod Distribution e High Availability
 
@@ -55,28 +74,33 @@ Per applicare e verificare la configurazione di alta disponibilità, ho utilizza
 ---
 ### Architecture
 
-
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │    Backend      │    │   Analytics     │
-│   (Port 30080)  │────│   (Port 30081)  │────│   (Port 30082)  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                      │
-         └───────────────────────┼──────────────────────┘
-                                 │
-                    ┌────────────▼─────────────┐
-                    │     Redis Cache          │
-                    │     (Internal)           │
-                    └──────────────────────────┘
-                                 │
-    ┌─────────────────────────────────────────────────┐
-    │              Kubernetes Cluster                 │
-    │           (k8s-master + 2 workers)              │
-    └─────────────────────────────────────────────────┘
-                                 │
-    ┌─────────────────────────────────────────────────┐
-    │          Infrastructure (Vagrant)               │
-    │             192.168.56.10-12                    │
-    └─────────────────────────────────────────────────┘
+```
+                Application Layer
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Frontend   │     │   Backend   │     │  Analytics  │
+│ (Port 30080)│<--->│ (Port 30081)│<--->│ (Port 30082)│
+└─────────────┘     └─────────────┘     └─────────────┘
+        │                  │                  │
+        └──────────────────┼──────────────────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │   Redis Cache   │
+                  │   (Internal)    │
+                  └─────────────────┘
+                           │
+                           ▼
+       ┌─────────────────────────────────────┐
+       │         Kubernetes Cluster          │
+       │       (k8s-master + 2 workers)      │
+       └─────────────────────────────────────┘
+                           │
+                           ▼
+       ┌─────────────────────────────────────┐
+       │      Infrastructure (Vagrant)       │
+       │         192.168.56.10-12            │
+       └─────────────────────────────────────┘
+```
 
 ---
 ### Prerequisiti
