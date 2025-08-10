@@ -175,7 +175,7 @@ health-check: ## Comprehensive health check
 install-tools: ## Install required tools (Ubuntu/Debian)
 	@echo "🛠️  Installing required tools..."
 	@sudo apt-get update
-	@sudo apt-get install -y curl wget gpg sshpass netcat-openbsd
+	@sudo apt-get install -y curl wget gpg sshpass netcat-openbsd jq
 	@# Install Terraform
 	@curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 	@echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $$(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
@@ -189,8 +189,31 @@ install-tools: ## Install required tools (Ubuntu/Debian)
 	@pip3 install ansible==8.7.0 ansible-lint==6.22.1 || sudo pip3 install ansible==8.7.0 ansible-lint==6.22.1
 	@# Install CI/CD tools
 	@pip3 install yamllint || sudo pip3 install yamllint
+	@# Install security tools
+	@echo "Installing security scanning tools..."
+	@# Install tfsec
 	@curl -sSfL https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | sudo bash
+	@# Install trivy
 	@curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo bash
+	@# Install trufflehog
+	@if command -v go >/dev/null 2>&1; then \
+		go install github.com/trufflesecurity/trufflehog/v3@latest; \
+	else \
+		echo "Go not installed, installing pre-built trufflehog binary..."; \
+		LATEST_TRUFFLEHOG=$$(curl -s https://api.github.com/repos/trufflesecurity/trufflehog/releases/latest | jq -r '.assets[] | select(.name | endswith("_linux_amd64.tar.gz")) | .browser_download_url'); \
+		curl -sSL $$LATEST_TRUFFLEHOG -o trufflehog.tar.gz && \
+		tar -xzf trufflehog.tar.gz && \
+		sudo mv trufflehog /usr/local/bin/ && \
+		rm trufflehog.tar.gz; \
+	fi
+	@# Install kubesec
+	@curl -sSfL https://raw.githubusercontent.com/controlplaneio/kubesec/master/install.sh | sudo bash
+	@# Install actionlint
+	@if command -v go >/dev/null 2>&1; then \
+		go install github.com/rhysd/actionlint/cmd/actionlint@latest; \
+	else \
+		echo "Go not installed, skipping actionlint installation"; \
+	fi
 	@echo "Tools installation completed"
 
 version: ## Show versions of all tools
@@ -201,6 +224,13 @@ version: ## Show versions of all tools
 	@echo -n "Ansible: " && ansible --version | head -1 || echo "Not installed"
 	@echo -n "Terraform: " && terraform --version | head -1 || echo "Not installed"
 	@echo -n "Helm: " && helm version --short || echo "Not installed"
+	@echo -n "kubectl: " && kubectl version --client || echo "Not installed"
+	@echo -n "Trivy: " && trivy --version || echo "Not installed"
+	@echo -n "tfsec: " && tfsec --version || echo "Not installed"
+	@echo -n "trufflehog: " && trufflehog --version || echo "Not installed"
+	@echo -n "kubesec: " && kubesec version || echo "Not installed"
+	@echo -n "yamllint: " && yamllint --version || echo "Not installed"
+	@echo -n "actionlint: " && actionlint -version || echo "Not installed"
 
 performance-test: ## Run basic performance test
 	@echo "⚡ Running performance test..."
