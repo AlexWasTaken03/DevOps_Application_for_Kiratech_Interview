@@ -22,15 +22,32 @@ jobs:
         with:
           working_directory: terraform
           format: sarif
-          output_file: ../tfsec.sarif
+          output_file: tfsec.sarif
 
-      - name: Verify SARIF file exists
+      - name: Debug Environment
         run: |
+          echo "Current working directory: $(pwd)"
+          echo "Directory listing:"
+          ls -la
+          echo "Terraform directory:"
+          ls -la terraform/
+          echo "Searching for SARIF files:"
+          find . -type f -name "*.sarif" | sort
+          
+      - name: Move SARIF file if needed
+        run: |
+          # Check if the file is in the terraform directory
+          if [ -f "terraform/tfsec.sarif" ]; then
+            echo "Found SARIF file in terraform directory, moving to root"
+            cp terraform/tfsec.sarif ./tfsec.sarif
+          fi
+          
+          # Check if file exists in root directory now
           if [ -f "tfsec.sarif" ]; then
-            echo "SARIF file exists"
+            echo "✅ SARIF file exists in root directory"
           else
-            echo "SARIF file not found in current directory"
-            find . -type f -name "tfsec.sarif" -o -name "*.sarif" | sort
+            echo "❌ SARIF file still not found in root directory"
+            find . -type f -name "*.sarif" | sort
           fi
 
       - name: Upload SARIF file
@@ -39,6 +56,7 @@ jobs:
         with:
           sarif_file: tfsec.sarif
           category: terraform-security
+          wait-for-processing: true
 
   docker-scan:
     name: Docker Image Scan
@@ -59,13 +77,28 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
           
+      - name: Debug Trivy Environment
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Directory listing:"
+          ls -la
+          echo "Searching for Trivy SARIF files:"
+          find . -type f -name "trivy-results.sarif" | sort
+          
       - name: Verify Trivy SARIF file exists
         run: |
           if [ -f "trivy-results.sarif" ]; then
-            echo "Trivy SARIF file exists"
+            echo "✅ Trivy SARIF file exists"
+            # Validate file content
+            if [ -s "trivy-results.sarif" ]; then
+              echo "File has content"
+              head -n 20 trivy-results.sarif
+            else
+              echo "⚠️ File is empty"
+            fi
           else
-            echo "Trivy SARIF file not found in current directory"
-            find . -type f -name "trivy-results.sarif" -o -name "*.sarif" | sort
+            echo "❌ Trivy SARIF file not found in current directory"
+            find . -type f -name "*.sarif" | sort
           fi
           
       - name: Upload Trivy scan results to GitHub Security tab
@@ -74,6 +107,7 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'docker-security'
+          wait-for-processing: true
 
   kubernetes-scan:
     name: Kubernetes Security Scan
@@ -90,13 +124,28 @@ jobs:
           output: kubesec-results.sarif
           exit-code: "0"  # Don't fail the build for now, just report issues
           
+      - name: Debug Kubesec Environment
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Directory listing:"
+          ls -la
+          echo "Searching for Kubesec SARIF files:"
+          find . -type f -name "kubesec-results.sarif" | sort
+          
       - name: Verify Kubesec SARIF file exists
         run: |
           if [ -f "kubesec-results.sarif" ]; then
-            echo "Kubesec SARIF file exists"
+            echo "✅ Kubesec SARIF file exists"
+            # Validate file content
+            if [ -s "kubesec-results.sarif" ]; then
+              echo "File has content"
+              head -n 20 kubesec-results.sarif
+            else
+              echo "⚠️ File is empty"
+            fi
           else
-            echo "Kubesec SARIF file not found in current directory"
-            find . -type f -name "kubesec-results.sarif" -o -name "*.sarif" | sort
+            echo "❌ Kubesec SARIF file not found in current directory"
+            find . -type f -name "*.sarif" | sort
           fi
           
       - name: Upload kubesec results
@@ -105,6 +154,7 @@ jobs:
         with:
           sarif_file: kubesec-results.sarif
           category: 'kubernetes-security'
+          wait-for-processing: true
 
   secrets-scan:
     name: Secret Scanning
