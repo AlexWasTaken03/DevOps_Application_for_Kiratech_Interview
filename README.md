@@ -113,9 +113,11 @@ Per una documentazione dettagliata della pipeline CI/CD, vedere [Enhanced CI/CD 
 
 #### Requisiti di Sistema
 - **RAM**: Minimo 8GB (16GB raccomandati)
-- **CPU**: 4+ core
+- **CPU**: 4+ core (processore con supporto alla virtualizzazione VT-x/AMD-V abilitato nel BIOS)
 - **Disk**: 20GB spazio libero
 - **OS**: Linux, macOS, o Windows con WSL2
+- **Permessi**: Privilegi di amministratore/sudo per installare software
+- **Rete**: Connessione internet attiva per il download delle dipendenze
 
 ### 🚀 Setup in 5 Passi
 
@@ -130,6 +132,50 @@ cd kiratech-kubernetes-project
 make install-tools
 ```
 
+> **Nota**: Se il comando `make install-tools` non funziona, puoi installare manualmente i tool necessari:
+> 
+> **Ubuntu/Debian**:
+> ```bash
+> # Aggiorna il sistema
+> sudo apt update && sudo apt upgrade -y
+> 
+> # Installa VirtualBox
+> sudo apt install -y virtualbox
+> 
+> # Installa Vagrant
+> wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+> echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+> sudo apt update && sudo apt install -y vagrant
+> 
+> # Installa Ansible
+> sudo apt install -y ansible
+> 
+> # Installa Terraform
+> sudo apt install -y terraform
+> 
+> # Installa kubectl
+> sudo apt install -y apt-transport-https ca-certificates curl
+> curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+> echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+> sudo apt update && sudo apt install -y kubectl
+> 
+> # Installa Helm
+> curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
+> echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+> sudo apt update && sudo apt install -y helm
+> ```
+> 
+> **macOS** (usando Homebrew):
+> ```bash
+> brew install virtualbox vagrant ansible terraform kubectl helm
+> ```
+> 
+> **Windows**:
+> 1. Installa [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
+> 2. Installa [Vagrant](https://www.vagrantup.com/downloads)
+> 3. Installa [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install)
+> 4. All'interno di WSL2, segui le istruzioni per Ubuntu/Debian
+
 #### 3. Verifica le Versioni degli Strumenti
 ```bash
 make version
@@ -139,6 +185,8 @@ make version
 ```bash
 make complete-setup
 ```
+
+> **Nota**: Se incontri problemi con `make complete-setup`, puoi eseguire i passaggi manualmente come descritto nella sezione "Setup Manuale (Opzionale)" più avanti.
 
 Questo singolo comando:
 - ✅ Crea e configura le VM
@@ -407,6 +455,18 @@ make logs
 # Health check completo
 make health-check
 ```
+
+#### Problemi comuni e soluzioni
+
+| Problema | Soluzione |
+|---------|-------------|
+| `make install-tools` fallisce | Usa le istruzioni di installazione manuale nella sezione "Installa gli Strumenti Richiesti" |
+| Errore "VT-x is not available" | Abilita la virtualizzazione nel BIOS/UEFI del tuo computer |
+| Errore di rete in Vagrant | Verifica che le interfacce di rete non siano in conflitto con altri VPN o software di virtualizzazione |
+| Problema "kubeconfig" | Esegui `export KUBECONFIG=$(pwd)/kubeconfig` e riprova |
+| Pod in stato "Pending" | Usa `kubectl describe pod [nome-pod]` per verificare gli eventi e `make fix-pod-distribution` per risolvere |
+| Errore "No space left on device" | Libera spazio sul disco o modifica `Vagrantfile` per ridurre le dimensioni delle VM |
+| Timeout nella creazione delle VM | Controlla la connessione internet e prova ad aumentare il timeout in Vagrantfile |
 
 ### Demo e Presentazioni
 ```bash
