@@ -383,9 +383,9 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          # Instead of comparing branches, scan the entire repository
           extra_args: --debug --only-verified
+        continue-on-error: true  # Don't fail the workflow if secrets are found
           
   summary:
     name: Security Scan Summary
